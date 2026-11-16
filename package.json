@@ -12,10 +12,13 @@
     "start": "node src/server.js",
     "agent": "node src/cli.js",
     "demo": "node src/cli.js --task \"Search the catalogue for 'notebook' and report its price\" --url file://$PWD/demo/site/index.html --max-steps 6",
-    "postinstall": "node -e \"console.log('Run: npx playwright install chromium  (skip if a system chromium is present)')\""
+    "agent:puppeteer": "node src/cli.js --engine puppeteer --task \"Search the catalogue for 'notebook', add it to the cart, and report its price\" --url file://$PWD/demo/site/index.html --max-steps 5 --budget-ms 240000",
+    "agent:playwright": "node src/cli.js --engine playwright --task \"Search the catalogue for 'notebook', add it to the cart, and report its price\" --url file://$PWD/demo/site/index.html --max-steps 5 --budget-ms 240000",
+    "build": "node scripts/embed-demo.mjs"
   },
   "dependencies": {
     "playwright": "^1.47.0",
+    "puppeteer": "^24.43.1",
     "undici": "^6.19.0"
   }
 }

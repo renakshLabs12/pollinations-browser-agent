@@ -10,8 +10,26 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { BrowserSession } from './browser.js';
 import { chat, parseJsonReply } from './pollinations.js';
+
+/**
+ * Two interchangeable browser drivers: Playwright (default) and Puppeteer.
+ * The engine is picked with BROWSER_ENGINE or --engine, and falls back to
+ * Playwright when the chosen one is not installed.
+ */
+async function loadEngine(engine) {
+  const wanted = String(engine || 'playwright').toLowerCase();
+  if (wanted === 'puppeteer') {
+    try {
+      const mod = await import('./browser-puppeteer.js');
+      return { Session: mod.BrowserSession, name: 'puppeteer' };
+    } catch (err) {
+      console.warn(`[agent] puppeteer engine unavailable (${err.message}); falling back to playwright`);
+    }
+  }
+  const mod = await import('./browser.js');
+  return { Session: mod.BrowserSession, name: 'playwright' };
+}
 
 const SYSTEM_PROMPT = `You are a browser automation planner. You see a snapshot of a web page and must choose exactly ONE next action to make progress on the user's task.
 
@@ -83,6 +101,7 @@ export async function runWorkflow({
   task,
   startUrl,
   maxSteps = 8,
+  engine = process.env.BROWSER_ENGINE || 'playwright',
   budgetMs = Number(process.env.AGENT_BUDGET_MS || 0), // 0 = no wall-clock limit
   runsDir = 'runs',
   runId = `run-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${crypto.randomBytes(2).toString('hex')}`,
@@ -102,7 +121,7 @@ export async function runWorkflow({
     startedAt: new Date().toISOString(),
     finishedAt: null,
     status: 'running',
-    engine: 'playwright',
+    engine: String(engine).toLowerCase(),
     model: process.env.POLLINATIONS_MODEL || 'openai-fast',
     api: 'pollinations legacy (text.pollinations.ai)',
     steps: 0,
@@ -121,7 +140,9 @@ export async function runWorkflow({
     }
   };
 
-  const session = new BrowserSession({ runId, runsDir });
+  const { Session, name: engineName } = await loadEngine(engine);
+  meta.engine = engineName;
+  const session = new Session({ runId, runsDir });
   emit({ type: 'run:start', meta });
 
   try {

@@ -17,9 +17,10 @@ const task = get('task');
 const startUrl = get('url');
 const maxSteps = Number(get('max-steps', 8));
 const budgetMs = Number(get('budget-ms', process.env.AGENT_BUDGET_MS || 0));
+const engine = get('engine', process.env.BROWSER_ENGINE || 'playwright');
 
 if (!task) {
-  console.error('Usage: node src/cli.js --task "<what to do>" [--url <start url>] [--max-steps 8]');
+  console.error('Usage: node src/cli.js --task "<what to do>" [--url <start url>] [--max-steps 8] [--engine playwright|puppeteer] [--budget-ms 240000]');
   process.exit(1);
 }
 
@@ -35,6 +36,7 @@ const { meta, steps, dir } = await runWorkflow({
   task,
   startUrl,
   maxSteps,
+  engine,
   budgetMs,
   onEvent: ({ type, step }) => {
     if (type !== 'step') return;

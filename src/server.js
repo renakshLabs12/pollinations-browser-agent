@@ -89,6 +89,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       ok: true,
       api: 'pollinations legacy',
+      engines: ['playwright', 'puppeteer'],
       model: process.env.POLLINATIONS_MODEL || 'openai-fast',
       activeRuns: running.size,
     });
@@ -121,8 +122,10 @@ const server = http.createServer(async (req, res) => {
     const maxSteps = Math.min(Math.max(Number(payload.maxSteps) || 6, 1), 15);
     const runId = `run-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${Math.random().toString(16).slice(2, 6)}`;
 
-    running.set(runId, { task, startedAt: new Date().toISOString() });
-    runWorkflow({ task, startUrl: payload.startUrl || '', maxSteps, runId })
+    const engine = payload.engine === 'puppeteer' ? 'puppeteer' : 'playwright';
+
+    running.set(runId, { task, engine, startedAt: new Date().toISOString() });
+    runWorkflow({ task, startUrl: payload.startUrl || '', maxSteps, engine, runId })
       .catch(() => {})
       .finally(() => running.delete(runId));
 

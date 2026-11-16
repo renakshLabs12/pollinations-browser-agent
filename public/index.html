@@ -131,7 +131,7 @@
     <div class="mark">PBA</div>
     <div class="titles">
       <h1>Pollinations Browser Agent</h1>
-      <p>Playwright browser automation planned by the Pollinations legacy API — one screenshot for every action</p>
+      <p>Playwright / Puppeteer automation planned by the Pollinations legacy API — one screenshot for every action, run locally or on GitHub Actions</p>
     </div>
     <div class="pill" id="statusPill"><span class="dot"></span><span id="statusText">checking local server…</span></div>
   </div>
@@ -154,9 +154,16 @@
             <label for="maxSteps" style="margin-top:0">Max steps</label>
             <input id="maxSteps" type="number" min="1" max="15" value="5" />
           </div>
-          <div style="display:flex;align-items:flex-end">
-            <button id="runBtn" style="width:100%">Run workflow</button>
+          <div>
+            <label for="engine" style="margin-top:0">Engine</label>
+            <select id="engine">
+              <option value="puppeteer" selected>Puppeteer</option>
+              <option value="playwright">Playwright</option>
+            </select>
           </div>
+        </div>
+        <div style="margin-top:12px">
+          <button id="runBtn" style="width:100%">Run workflow</button>
         </div>
 
         <div class="hint" id="runHint">The server must be running: <code>npm start</code>. Every step is written to <code>runs/&lt;runId&gt;/</code> with its screenshot.</div>
@@ -180,7 +187,7 @@
       <div class="node"><div class="k">01 · input</div><div class="n">Task + URL</div><div class="d">CLI flag or the form on this page. Optional step cap and time budget.</div></div>
       <div class="node"><div class="k">02 · observe</div><div class="n">Page snapshot</div><div class="d">Visible text plus a numbered list of interactive elements with stable <code>[data-pba-idx]</code> selectors.</div></div>
       <div class="node"><div class="k">03 · plan</div><div class="n">Pollinations legacy API</div><div class="d"><code>POST text.pollinations.ai/openai</code> returns exactly one action as JSON.</div></div>
-      <div class="node"><div class="k">04 · act</div><div class="n">Playwright</div><div class="d">click / type / press / select / scroll / goto / extract — sandboxed, headless, time-boxed.</div></div>
+      <div class="node"><div class="k">04 · act</div><div class="n">Puppeteer / Playwright</div><div class="d">click / type / press / select / scroll / goto / extract — sandboxed, headless, time-boxed.</div></div>
       <div class="node"><div class="k">05 · prove</div><div class="n">Screenshot</div><div class="d">Saved as <code>runs/&lt;id&gt;/NN-action.png</code> and appended to <code>steps.json</code>.</div></div>
     </div>
   </section>
@@ -199,10 +206,14 @@ npx playwright install chromium   <span class="c"># skip if chromium is already 
 node src/cli.js <span class="s">\
   --task "Search for 'notebook' and report the price" \
   --url  http://localhost:5173/demo/site/index.html \
+  --engine puppeteer \
   --max-steps 5 --budget-ms 240000</span>
 
 <span class="c"># 3. or the console + API</span>
-npm start        <span class="c"># http://localhost:5173</span></div>
+npm start        <span class="c"># http://localhost:5173</span>
+
+<span class="c"># 4. or on GitHub Actions — Actions → browser-agent → Run workflow</span>
+<span class="c">#    screenshots + dashboard come back as artifacts</span></div>
       </div>
       <div>
         <h3>Endpoints used</h3>
@@ -222,7 +233,7 @@ npm start        <span class="c"># http://localhost:5173</span></div>
   </section>
 
   <footer>
-    <span>Pollinations Browser Agent · Playwright + Pollinations Classic API · screenshots in <code>runs/</code></span>
+    <span>Pollinations Browser Agent · Puppeteer / Playwright + Pollinations Classic API · screenshots in <code>runs/</code> · CI in <code>.github/workflows/browser-agent.yml</code></span>
     <span class="tag" id="footTag">static preview</span>
   </footer>
 </div>
@@ -350,6 +361,7 @@ npm start        <span class="c"># http://localhost:5173</span></div>
         task: $('task').value.trim(),
         startUrl: $('startUrl').value.trim(),
         maxSteps: Number($('maxSteps').value) || 5,
+        engine: $('engine') ? $('engine').value : 'puppeteer',
       };
       const { runId } = await fetch('/api/run', {
         method: 'POST',

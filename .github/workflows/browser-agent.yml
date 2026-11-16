@@ -1,0 +1,160 @@
+name: browser-agent
+
+# Runs the browser automation on GitHub's runners: Puppeteer (default) or Playwright,
+# planned by the Pollinations legacy API, with a screenshot for every action.
+# Screenshots and the rebuilt dashboard come back as workflow artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What the agent should do
+        required: false
+        default: Search the catalogue for 'notebook', add it to the cart, and report its price
+      start_url:
+        description: Start URL (leave empty to use the bundled demo site)
+        required: false
+        default: ''
+      max_steps:
+        description: Maximum number of actions
+        required: false
+        default: '5'
+      engine:
+        description: Browser engine
+        type: choice
+        options:
+          - puppeteer
+          - playwright
+        default: puppeteer
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'demo/**'
+      - 'scripts/**'
+      - 'package.json'
+      - '.github/workflows/browser-agent.yml'
+  schedule:
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-agent-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  automate:
+    name: automate (${{ inputs.engine || 'puppeteer' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      BROWSER_ENGINE: ${{ inputs.engine || 'puppeteer' }}
+      POLLINATIONS_MODEL: ${{ vars.POLLINATIONS_MODEL || 'openai-fast' }}
+      POLLINATIONS_MIN_INTERVAL_MS: '4000'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser binaries
+        run: |
+          if [ "$BROWSER_ENGINE" = "puppeteer" ]; then
+            npx puppeteer browsers install chrome
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      - name: Resolve task, URL and step budget
+        id: cfg
+        run: |
+          TASK='${{ inputs.task }}'
+          if [ -z "$TASK" ]; then
+            TASK="Search the catalogue for 'notebook', add it to the cart, and report its price"
+          fi
+          URL='${{ inputs.start_url }}'
+          if [ -z "$URL" ]; then
+            URL="file://$GITHUB_WORKSPACE/demo/site/index.html"
+          fi
+          STEPS='${{ inputs.max_steps }}'
+          if [ -z "$STEPS" ]; then STEPS=5; fi
+          {
+            echo "task=$TASK"
+            echo "url=$URL"
+            echo "steps=$STEPS"
+          } >> "$GITHUB_OUTPUT"
+          echo "engine=$BROWSER_ENGINE" >> "$GITHUB_OUTPUT"
+
+      - name: Run the browser workflow
+        run: |
+          node src/cli.js \
+            --task "${{ steps.cfg.outputs.task }}" \
+            --url "${{ steps.cfg.outputs.url }}" \
+            --max-steps "${{ steps.cfg.outputs.steps }}" \
+            --engine "$BROWSER_ENGINE" \
+            --budget-ms 900000
+
+      - name: Build the standalone dashboard
+        if: always()
+        run: node scripts/embed-demo.mjs || echo "No run to embed"
+
+      - name: Write the run summary
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const dir = "runs";
+            if (!fs.existsSync(dir)) { console.log("no runs"); process.exit(0); }
+            const ids = fs.readdirSync(dir).filter(d => !d.startsWith("."));
+            const runs = ids.map(id => {
+              try {
+                const meta = JSON.parse(fs.readFileSync(path.join(dir, id, "meta.json"), "utf8"));
+                const steps = JSON.parse(fs.readFileSync(path.join(dir, id, "steps.json"), "utf8"));
+                return { meta, steps };
+              } catch { return null; }
+            }).filter(Boolean).sort((a, b) => String(b.meta.startedAt).localeCompare(String(a.meta.startedAt)));
+            if (!runs.length) { console.log("no runs"); process.exit(0); }
+            const { meta, steps } = runs[0];
+            const lines = [
+              `## Browser agent run \`${meta.runId}\``,
+              "",
+              `- **status:** ${meta.status}`,
+              `- **engine:** ${meta.engine}`,
+              `- **model:** ${meta.model}`,
+              `- **task:** ${meta.task}`,
+              `- **report:** ${meta.report || "—"}`,
+              "",
+              "| # | action | selector | result |",
+              "|---|---|---|---|",
+              ...steps.map(s => `| ${s.n} | ${s.action} | \`${(s.selector || "").slice(0, 40)}\` | ${s.ok ? "ok" : "failed"} |`),
+              "",
+              "Screenshots are in the `screenshots` artifact; the dashboard is in the `dashboard` artifact.",
+            ];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-run-${{ github.run_number }}
+          path: runs/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-run-${{ github.run_number }}
+          path: index.html
+          if-no-files-found: ignore
+          retention-days: 30
