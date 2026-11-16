@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kiran Stationers — Demo Catalogue</title>
+<style>
+  :root { --ink:#12161f; --muted:#5b6472; --line:#e3e7ef; --brand:#1d4ed8; --bg:#f7f8fb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:16px 28px; display:flex; align-items:center; gap:14px; }
+  .logo { width:34px; height:34px; border-radius:9px; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:700; }
+  header h1 { font-size:17px; margin:0; }
+  header .cart { margin-left:auto; font-size:13px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:6px 14px; }
+  main { max-width:900px; margin:0 auto; padding:34px 24px 70px; }
+  h2 { font-size:26px; margin:0 0 6px; }
+  p.sub { color:var(--muted); margin:0 0 24px; font-size:14px; }
+  .searchbar { display:flex; gap:10px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px; }
+  .searchbar input { flex:1; border:0; outline:0; padding:10px 12px; font-size:15px; background:transparent; }
+  .searchbar button { border:0; background:var(--brand); color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  #results { margin-top:26px; display:grid; gap:12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; align-items:center; gap:16px; }
+  .card .thumb { width:52px; height:52px; border-radius:10px; background:#eef2ff; display:grid; place-items:center; font-size:22px; }
+  .card .name { font-weight:600; font-size:15px; }
+  .card .meta { color:var(--muted); font-size:13px; }
+  .card .price { margin-left:auto; font-weight:700; font-size:16px; }
+  .card button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; }
+  .empty { color:var(--muted); font-size:14px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:30px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">K</div>
+  <h1>Kiran Stationers</h1>
+  <div class="cart" id="cart">Cart: <span id="cartCount">0</span> item(s)</div>
+</header>
+
+<main>
+  <h2>Find your supplies</h2>
+  <p class="sub">Demo storefront used by the browser-automation workflow. Search the catalogue, open a result, add it to the cart.</p>
+
+  <div class="searchbar">
+    <input id="q" aria-label="Search catalogue" placeholder="Search catalogue — try notebook, pen, stapler" />
+    <button id="go">Search</button>
+  </div>
+
+  <div id="results"><p class="empty">Nothing searched yet.</p></div>
+</main>
+
+<footer>Demo page · Kiran Stationers · no real orders are placed</footer>
+
+<script>
+  const CATALOGUE = [
+    { name: 'Classmate Notebook 200 pages', meta: 'Single line · soft cover', price: 349, icon: '📒' },
+    { name: 'Reynolds Trimax Pen (pack of 5)', meta: 'Blue ink · 0.7 mm', price: 120, icon: '🖊️' },
+    { name: 'Kangaro Stapler HD-10', meta: 'Includes 1000 staples', price: 199, icon: '📎' },
+    { name: 'A4 Copier Paper 500 sheets', meta: '75 GSM · bright white', price: 289, icon: '📄' },
+  ];
+
+  let cart = 0;
+  const results = document.getElementById('results');
+  const cartCount = document.getElementById('cartCount');
+
+  function render(list) {
+    if (!list.length) {
+      results.innerHTML = '<p class="empty">No matches. Try “notebook”.</p>';
+      return;
+    }
+    results.innerHTML = list
+      .map(
+        (item, i) => `<div class="card">
+          <div class="thumb">${item.icon}</div>
+          <div>
+            <div class="name">${item.name}</div>
+            <div class="meta">${item.meta}</div>
+          </div>
+          <div class="price">₹${item.price}</div>
+          <button data-add="${i}">Add to cart</button>
+        </div>`,
+      )
+      .join('');
+    results.querySelectorAll('[data-add]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        cart += 1;
+        cartCount.textContent = String(cart);
+        btn.textContent = 'Added ✓';
+      });
+    });
+  }
+
+  document.getElementById('go').addEventListener('click', () => {
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    if (!q) return render([]);
+    render(CATALOGUE.filter((item) => item.name.toLowerCase().includes(q) || item.meta.toLowerCase().includes(q)));
+  });
+
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('go').click();
+  });
+</script>
+</body>
+</html>

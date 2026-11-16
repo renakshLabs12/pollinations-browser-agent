@@ -1,0 +1,21 @@
+{
+  "name": "pollinations-browser-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-driven browser automation workflow: Playwright + Pollinations legacy (Classic) API, with a screenshot captured for every action.",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "agent": "node src/cli.js",
+    "demo": "node src/cli.js --task \"Search the catalogue for 'notebook' and report its price\" --url file://$PWD/demo/site/index.html --max-steps 6",
+    "postinstall": "node -e \"console.log('Run: npx playwright install chromium  (skip if a system chromium is present)')\""
+  },
+  "dependencies": {
+    "playwright": "^1.47.0",
+    "undici": "^6.19.0"
+  }
+}
