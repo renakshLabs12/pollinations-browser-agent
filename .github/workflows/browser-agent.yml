@@ -75,16 +75,20 @@ jobs:
 
       - name: Resolve task, URL and step budget
         id: cfg
+        env:
+          TASK_INPUT: ${{ inputs.task }}
+          URL_INPUT: ${{ inputs.start_url }}
+          STEPS_INPUT: ${{ inputs.max_steps }}
         run: |
-          TASK='${{ inputs.task }}'
+          TASK="$TASK_INPUT"
           if [ -z "$TASK" ]; then
             TASK="Search the catalogue for 'notebook', add it to the cart, and report its price"
           fi
-          URL='${{ inputs.start_url }}'
+          URL="$URL_INPUT"
           if [ -z "$URL" ]; then
             URL="file://$GITHUB_WORKSPACE/demo/site/index.html"
           fi
-          STEPS='${{ inputs.max_steps }}'
+          STEPS="$STEPS_INPUT"
           if [ -z "$STEPS" ]; then STEPS=5; fi
           {
             echo "task=$TASK"
